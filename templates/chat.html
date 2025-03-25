@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - Medical Advisor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- Header with Logo -->
+<div class="header">
+    <div class="logo">
+        <i class="fas fa-stethoscope logo-icon"></i>
+        MediBot
+    </div>
+    <div class="title-container">
+        <h1 class="title">MediBot Medical Advisor</h1>
+        <p class="subtitle">Get expert advice on medical queries and health-related questions</p>
+    </div>
+</div>
+
+<!-- Main Chat Container -->
+<div class="container">
+    <div class="chat-container" id="chatMessages">
+        <!-- Initial Bot Message -->
+        <div class="message bot-message">
+            <p>Hello! I'm MediBot, your medical advisor. How can I assist you today?</p>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="loading-indicator hidden">
+    <div class="typing-indicator">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+</div>
+
+<!-- Input Container -->
+<div class="input-container">
+    <textarea id="questionInput" placeholder="Ask your medical question here..."></textarea>
+    <button id="sendButton" type="button" onclick="sendMessage()">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
+
+<script>
+    const chatContainer = document.getElementById('chatMessages');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    // Send message to backend
+    async function sendMessage() {
+        const inputField = document.getElementById('questionInput');
+        const message = inputField.value.trim();
+
+        if (!message) return;
+
+        // Display user message
+        displayMessage(message, 'user-message');
+
+        inputField.value = "";  // Clear input
+        loadingIndicator.classList.remove('hidden');
+
+        try {
+            const formData = new FormData();
+            formData.append("msg", message);
+
+            const response = await fetch('/get', {
+                method: 'POST',
+                body: formData
+            });
+
+            const botResponse = await response.text();
+            
+            // Display bot response
+            displayMessage(botResponse, 'bot-message');
+
+        } catch (error) {
+            console.error("Error:", error);
+            displayMessage("Error connecting to the backend. Please try again later.", 'bot-message');
+        } finally {
+            loadingIndicator.classList.add('hidden');
+        }
+    }
+
+    // Display messages in the chat
+    function displayMessage(message, className) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', className);
+        messageDiv.innerHTML = `<p>${message}</p>`;
+        chatContainer.appendChild(messageDiv);
+
+        // Auto-scroll to the bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Send message on "Enter" key press
+    document.getElementById('questionInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+</script>
+
+</body>
+</html>
