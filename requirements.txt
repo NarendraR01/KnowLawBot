@@ -11,6 +11,6 @@ langchain
 groq
 pinecone-client
 flask
-python-dotenv
+gunicorn
 
 -e .
