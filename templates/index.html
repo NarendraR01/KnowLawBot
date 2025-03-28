@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowLawBot - AI Legal Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-balance-scale logo-icon"></i>
+                <span class="logo-text">KnowLawBot</span>
+            </div>
+            <div class="subtitle">AI Legal Assistant for Indian Law</div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="chat-container" id="chatbox">
+            <div class="message bot-message">
+                <div class="message-content">
+                    Welcome to KnowLawBot! I specialize in Indian legal matters. How can I help you today?
+                </div>
+                <div class="message-time">10:00</div>
+            </div>
+        </div>
+    </main>
+
+    <div class="input-container">
+        <textarea id="userInput" placeholder="Ask about Indian laws, articles, or cases..." rows="1"></textarea>
+        <button id="sendButton" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+
+    <script>
+        // Auto-resize textarea
+        const textarea = document.getElementById('userInput');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Send message on Enter (Shift+Enter for new line)
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const chatbox = document.getElementById('chatbox');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user-message';
+            userMsg.innerHTML = `
+                <div class="message-content">${message}</div>
+                <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+            `;
+            chatbox.appendChild(userMsg);
+            
+            // Clear input and reset height
+            input.value = '';
+            input.style.height = 'auto';
+            
+            // Add loading indicator
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = `
+                <div class="message-content"><div class="loading"></div></div>
+            `;
+            chatbox.appendChild(botMsg);
+            
+            chatbox.scrollTop = chatbox.scrollHeight;
+            
+            try {
+                const response = await fetch('/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `msg=${encodeURIComponent(message)}`
+                });
+                
+                const data = await response.json();
+                
+                // Update loading message with actual response
+                botMsg.innerHTML = `
+                    <div class="message-content">${data.answer}</div>
+                    <div class="message-time">${data.timestamp}</div>
+                `;
+                
+            } catch (error) {
+                botMsg.innerHTML = `
+                    <div class="message-content" style="color: var(--danger)">
+                        Error: Could not get response. Please try again.
+                    </div>
+                `;
+            }
+            
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+    </script>
+</body>
+</html>

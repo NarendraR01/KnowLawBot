@@ -1,66 +1,52 @@
-from flask import Flask, render_template, jsonify, request
-from src.helper import download_hugging_face_embeddings
-from langchain_pinecone import PineconeVectorStore
-from langchain_openai import OpenAI
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from flask import Flask, request, jsonify, render_template, url_for
+from groq import Groq
 from dotenv import load_dotenv
-from src.prompt import *
+from src.prompt import SYSTEM_PROMPT
 import os
+from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='templates',
+            static_folder='static')
 
 load_dotenv()
+client = Groq(api_key=os.environ['GROQ_API_KEY'])
 
-PINECONE_API_KEY=os.environ.get('PINECONE_API_KEY')
-OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY')
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-
-embeddings = download_hugging_face_embeddings()
-
-
-index_name = "medicalbot"
-
-# Embed each chunk and upsert the embeddings into your Pinecone index.
-docsearch = PineconeVectorStore.from_existing_index(
-    index_name=index_name,
-    embedding=embeddings
-)
-
-retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k":3})
-
-
-llm = OpenAI(temperature=0.4, max_tokens=500)
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt),
-        ("human", "{input}"),
-    ]
-)
-
-question_answer_chain = create_stuff_documents_chain(llm, prompt)
-rag_chain = create_retrieval_chain(retriever, question_answer_chain)
-
-
-@app.route("/")
-def index():
-    return render_template('chat.html')
-
-
-@app.route("/get", methods=["GET", "POST"])
+@app.route('/get', methods=['POST'])
 def chat():
-    msg = request.form["msg"]
-    input = msg
-    print(input)
-    response = rag_chain.invoke({"input": msg})
-    print("Response : ", response["answer"])
-    return str(response["answer"])
-
-
-
+    try:
+        user_input = request.form.get("msg", "").strip()
+        
+        if not user_input:
+            return jsonify({
+                "answer": "Please enter a legal question",
+                "timestamp": datetime.now().strftime("%H:%M")
+            })
+        
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_input}
+            ],
+            model="llama3-70b-8192",
+            temperature=0.3
+        )
+        
+        return jsonify({
+            "answer": response.choices[0].message.content,
+            "timestamp": datetime.now().strftime("%H:%M")
+        })
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({
+            "answer": "Our legal engine is currently unavailable. Please try again later.",
+            "timestamp": datetime.now().strftime("%H:%M")
+        }), 500
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port= 8080, debug= True)
+    app.run(host="0.0.0.0", port=8080, debug=True)
