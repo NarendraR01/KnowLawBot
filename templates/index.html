@@ -3,85 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KnowLawBot - AI Legal Assistant</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>KnowLawBot</title>
+    <link rel="stylesheet" href="static/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-balance-scale logo-icon"></i>
-                <span class="logo-text">KnowLawBot</span>
-            </div>
-            <div class="subtitle">AI Legal Assistant for Indian Law</div>
+        <div class="logo">
+            <i class="fas fa-balance-scale"></i>
+            <h1>KnowLawBot</h1>
         </div>
+        <p>AI Legal Assistant for Indian Law</p>
     </header>
 
-    <main class="container">
-        <div class="chat-container" id="chatbox">
-            <div class="message bot-message">
-                <div class="message-content">
-                    Welcome to KnowLawBot! I specialize in Indian legal matters. How can I help you today?
-                </div>
-                <div class="message-time">10:00</div>
+    <main class="chat-container" id="chatbox">
+        <div class="message bot">
+            <div class="message-content">
+                Welcome! I am KnowLawBot, Ask me about any legal queries you have.
             </div>
         </div>
     </main>
 
     <div class="input-container">
-        <textarea id="userInput" placeholder="Ask about Indian laws, articles, or cases..." rows="1"></textarea>
-        <button id="sendButton" onclick="sendMessage()">
-            <i class="fas fa-paper-plane"></i>
-        </button>
+        <textarea id="userInput" placeholder="Type your legal question..." rows="1"></textarea>
+        <button id="sendButton"><i class="fas fa-paper-plane"></i></button>
     </div>
 
     <script>
-        // Auto-resize textarea
+        // Auto-resize and send message
         const textarea = document.getElementById('userInput');
+        const chatbox = document.getElementById('chatbox');
+        
         textarea.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
 
-        // Send message on Enter (Shift+Enter for new line)
-        textarea.addEventListener('keydown', function(e) {
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        textarea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
+        function formatResponse(text) {
+            // Convert markdown-like formatting to HTML
+            let formatted = text
+                // Bold text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Bullet points
+                .replace(/^\s*-\s*(.*$)/gm, '<li>$1</li>')
+                // Numbered lists
+                .replace(/^\s*\d+\.\s*(.*$)/gm, '<li>$1</li>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
+            
+            // Wrap list items in <ul> if we found any
+            if (formatted.includes('<li>')) {
+                formatted = formatted.replace(/<li>.*?<\/li>/g, 
+                    '<ul>' + formatted.match(/<li>.*?<\/li>/g).join('') + '</ul>');
+            }
+            
+            return formatted;
+        }
+
         async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const chatbox = document.getElementById('chatbox');
-            const message = input.value.trim();
-            
+            const message = textarea.value.trim();
             if (!message) return;
-            
+
             // Add user message
-            const userMsg = document.createElement('div');
-            userMsg.className = 'message user-message';
-            userMsg.innerHTML = `
-                <div class="message-content">${message}</div>
-                <div class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+            chatbox.innerHTML += `
+                <div class="message user">
+                    <div class="message-content">${message}</div>
+                </div>
             `;
-            chatbox.appendChild(userMsg);
-            
-            // Clear input and reset height
-            input.value = '';
-            input.style.height = 'auto';
-            
+
+            textarea.value = '';
+            textarea.style.height = 'auto';
+
             // Add loading indicator
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = `
-                <div class="message-content"><div class="loading"></div></div>
+            chatbox.innerHTML += `
+                <div class="message bot">
+                    <div class="message-content"><div class="loading"></div></div>
+                </div>
             `;
-            chatbox.appendChild(botMsg);
-            
             chatbox.scrollTop = chatbox.scrollHeight;
-            
+
+            // Get bot response
             try {
                 const response = await fetch('/get', {
                     method: 'POST',
@@ -90,23 +99,16 @@
                     },
                     body: `msg=${encodeURIComponent(message)}`
                 });
-                
                 const data = await response.json();
                 
-                // Update loading message with actual response
-                botMsg.innerHTML = `
-                    <div class="message-content">${data.answer}</div>
-                    <div class="message-time">${data.timestamp}</div>
-                `;
+                // Apply formatting
+                document.querySelector('.message:last-child .message-content').innerHTML = 
+                    formatResponse(data.answer);
                 
             } catch (error) {
-                botMsg.innerHTML = `
-                    <div class="message-content" style="color: var(--danger)">
-                        Error: Could not get response. Please try again.
-                    </div>
-                `;
+                document.querySelector('.message:last-child .message-content').innerHTML = 
+                    'Error: Could not get response';
             }
-            
             chatbox.scrollTop = chatbox.scrollHeight;
         }
     </script>

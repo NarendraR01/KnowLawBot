@@ -44,7 +44,7 @@ def chat():
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({
-            "answer": "Our legal engine is currently unavailable. Please try again later.",
+            "answer": "**Error**: Our legal engine is currently unavailable. Please try again later.",
             "timestamp": datetime.now().strftime("%H:%M")
         }), 500
 
