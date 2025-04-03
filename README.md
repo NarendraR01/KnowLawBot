@@ -12,7 +12,7 @@ Project repo: https://github.com/
 ### STEP 01- Create a conda environment after opening the repository
 
 ```bash
-conda create -n knowlabot python=3.10 -y
+conda create -n knowlawbot python=3.10 -y
 ```
 
 ```bash
